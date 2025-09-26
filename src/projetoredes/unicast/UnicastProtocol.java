@@ -17,7 +17,6 @@ public class UnicastProtocol implements UnicastServiceInterface {
     // Mapa de Enderecos - IDs
     private final Map<DatagramSocket, Short> knownAddresses = new HashMap<>();
 
-    
 
     public UnicastProtocol(UnicastServiceUserInterface user, short userId, String configPath) 
     throws IOException, IllegalArgumentException {
@@ -70,6 +69,12 @@ public class UnicastProtocol implements UnicastServiceInterface {
             System.err.println("Erro de I/O ao enviar pacote: " + e.getMessage());
             return false;
         }
+    }
+
+    private void startReceiverThread() {
+        // TODO: Fazer método que inicie uma thread, inicie um buffer com o tamanho definido,
+        // fique bloqueado até receber um pacote, use o mapa reverso para descobrir o id,
+        // processe a mensagem e devolva via user.UPDataInd()
     }
 
 }
