@@ -9,13 +9,17 @@ import projetoredes.utils.Utils;
 
 public class UnicastProtocol implements UnicastServiceInterface {
 
-    private static final int MAX_PDU_SIZE = 512;
+    private static final int MAX_PDU_SIZE = 1024;
     private final DatagramSocket socket;
     private final UnicastServiceUserInterface user;
+
     // Mapa de IDs - Enderecos
     private final Map<Short, UCSAP> knownEntities = new HashMap<>();
+
     // Mapa de Enderecos - IDs
-    private final Map<DatagramSocket, Short> knownAddresses = new HashMap<>();
+    private final Map<SocketAddress, Short> knownAddresses = new HashMap<>();
+
+    private final Thread receiverThread;
 
 
     public UnicastProtocol(UnicastServiceUserInterface user, short userId, String configPath) 
@@ -26,9 +30,15 @@ public class UnicastProtocol implements UnicastServiceInterface {
         this.user = user;
 
         List<UCSAP> addresses = Utils.loadConfiguration(configPath);
-        for (UCSAP address : addresses) {
-            knownEntities.put(address.id(), address);
-            knownAddresses.put(new DatagramSocket(address.port()), address.id());
+        for (UCSAP ucsap : addresses) {
+            knownEntities.put(ucsap.id(), ucsap);
+            try {
+                InetAddress address = InetAddress.getByName(ucsap.host());
+                SocketAddress socketAddr = new InetSocketAddress(address, ucsap.port()); 
+                knownAddresses.put(socketAddr, ucsap.id());
+            } catch (UnknownHostException e) {
+                System.err.println("Aviso: Host desconhecido " + ucsap.host() + ". Ignorando esta entrada.");
+            }
         }
 
         UCSAP selfDescription = knownEntities.get(userId);
@@ -41,6 +51,9 @@ public class UnicastProtocol implements UnicastServiceInterface {
         } catch (SocketException e) {
             throw new IOException("Não foi possível criar ou vincular o socket na porta " + selfDescription.port(), e);
         }
+
+        this.receiverThread = new Thread(this::startReceiverThread);
+        this.receiverThread.start();
     }
 
     @Override
