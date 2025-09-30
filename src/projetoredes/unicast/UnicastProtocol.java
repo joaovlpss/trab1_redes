@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import projetoredes.utils.Utils;
 
-public class UnicastProtocol implements UnicastServiceInterface {
+public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
 
     private static final int MAX_PDU_SIZE = 1024;
     private final DatagramSocket socket;
@@ -85,9 +85,68 @@ public class UnicastProtocol implements UnicastServiceInterface {
     }
 
     private void startReceiverThread() {
-        // TODO: Fazer método que inicie uma thread, inicie um buffer com o tamanho definido,
-        // fique bloqueado até receber um pacote, use o mapa reverso para descobrir o id,
-        // processe a mensagem e devolva via user.UPDataInd()
+        byte[] buffer = new byte[MAX_PDU_SIZE];
+        while (!socket.isClosed()){
+            try{
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                // Bloqueia ate receber pacote
+                socket.receive(packet);
+
+                // Identificar o remetente pelo mapa de enderecos
+                SocketAddress senderAddress = packet.getSocketAddress();
+                Short sourceId = knownAddresses.get(senderAddress);
+
+                if(sourceId == null) {
+                    System.err.println("Aviso: Pacote recebido de endereço desconhecido " + senderAddress + ". Ignorando.");
+                    continue;
+                }
+
+                // Processar a PDU recebida
+                String receivedData = new String(packet.getData(), 0, packet.getLength());
+                processPDU(sourceId, receivedData);
+            } catch (SocketException e) {
+                System.err.println("Socket fechado inesperadamente: " + e.getMessage());
+                break;
+            } catch (IOException e) {
+                System.err.println("Erro de I/O ao receber pacote: " + e.getMessage());
+            }
+        }
     }
 
+    private void processPDU(short sourceId, String pdu) {
+        String[] parts = pdu.split(" ", 3);
+
+        if (parts.length == 3 && parts[0].equals("UPDREQPDU")) {
+            try {
+                int declaredLength = Integer.parseInt(parts[1]);
+                String data = parts[2];
+
+                if (data.length() != declaredLength) {
+                    System.err.println("Aviso: Comprimento declarado (" + declaredLength + ") não corresponde ao comprimento real (" + data.length() + "). Ignorando PDU.");
+                    return;
+                }
+
+                user.UPDataInd(sourceId, data);
+            } catch (NumberFormatException e) {
+                System.err.println("Aviso: Comprimento inválido na PDU recebida. Ignorando.");
+            }
+        } else {
+            System.err.println("ERRO: PDU mal formatada recebida de ID " + sourceId + ". Ignorando.");
+        }
+    }
+
+    @Override
+    public void close() {
+        if (socket != null && !socket.isClosed()) {
+            socket.close();
+        }
+        try {
+            if (receiverThread != null && receiverThread.isAlive()) {
+                receiverThread.join();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Thread de recepção interrompida durante o fechamento.");
+        }
+    }
 }
