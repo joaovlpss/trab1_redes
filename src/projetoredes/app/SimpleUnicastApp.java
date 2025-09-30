@@ -47,8 +47,36 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
             String[] parts = line.split(" ", 3);
 
             if(parts.length == 3 && parts[0].equalsIgnoreCase("send")) {
-                // TODO: Implementar envio de mensagem.
+                try {
+                    short destinationId = Short.parseShort(parts[1]);
+                    String message = parts[2];
+
+                    if (destinationId == this.selfId) {
+                        System.out.println("AVISO: Você não pode enviar uma mensagem para si mesmo.");
+                        continue;
+                    }
+
+                    boolean success = protocol.UPDataReq(destinationId, message);
+                    if (success) {
+                        System.out.println("-> Mensagem enviada para o ID" + destinationId + ".");
+                    } else {
+                        System.out.println("-> Falha ao enviar mensagem. Verifique o ID inserido.");
+                    }
+                } catch (NumberFormatException e) {
+                    System.err.println("ERRO: O ID de destino deve ser um número.");
+                }
+            } else {
+                System.out.println("Comando inválido. Tente novamente.");
             }
         }
+        scanner.close();
+    }
+
+    @Override
+    public void close() {
+        if(protocol != null) {
+            protocol.close();
+        }
+        System.out.println("Aplicação encerrada.");
     }
 }
