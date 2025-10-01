@@ -2,6 +2,7 @@ package projetoredes.app;
 
 import projetoredes.unicast.UnicastServiceUserInterface;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 import projetoredes.unicast.UnicastProtocol;
@@ -12,7 +13,7 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
     private final UnicastProtocol protocol;
     private final short selfId;
 
-    public SimpleUnicastApp(short selfId, String configPath) throws Exception {
+    public SimpleUnicastApp(short selfId, String configPath) throws IOException {
         this.selfId = selfId;
         // Iniciar a thread receptora
         this.protocol = new UnicastProtocol(this, selfId, configPath);
@@ -63,6 +64,7 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
                         System.out.println("-> Falha ao enviar mensagem. Verifique o ID inserido.");
                     }
                 } catch (NumberFormatException e) {
+                    // Unico erro que pode acontecer aqui e parsing de numero.
                     System.err.println("ERRO: O ID de destino deve ser um número.");
                 }
             } else {
@@ -78,5 +80,34 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
             protocol.close();
         }
         System.out.println("Aplicação encerrada.");
+    }
+
+    public static void main(String[] args){
+        if(args.length != 1) {
+            System.err.println("Uso: java projetoredes.app.SimpleUnicastApp <id>");
+            // Sair com erro
+            System.exit(1);
+        }
+
+        // Caminho para arquivo de config.
+        // Vamos sempre rodar da raiz do projeto.
+        final String CONFIG_PATH = "config/ucsaps.conf";
+
+        try {
+            short selfId = Short.parseShort(args[0]);
+
+            // Usando try-with-resources nos garante que o close() vai ser chamado.
+            try (SimpleUnicastApp app = new SimpleUnicastApp(selfId, CONFIG_PATH)){
+                app.run();
+            }
+        } catch (NumberFormatException e){
+            System.err.println("ERRO: O ID fornecido '" + args[0] + "' não é um número válido.");
+        } catch (IllegalArgumentException e) {
+            System.err.println("ERRO: " + e.getMessage());
+        // Essa vem do protocolo
+        } catch (IOException e) {
+            System.err.println("ERRO de I/O ao iniciar o protocolo: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
