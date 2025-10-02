@@ -1,11 +1,12 @@
 package projetoredes.app;
 
-import projetoredes.unicast.UnicastServiceUserInterface;
-
 import java.io.IOException;
+import java.util.List;
 import java.util.Scanner;
-
+import projetoredes.unicast.UCSAP;
 import projetoredes.unicast.UnicastProtocol;
+import projetoredes.unicast.UnicastServiceUserInterface;
+import projetoredes.utils.Utils;
 
 
 public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoCloseable {
@@ -15,6 +16,7 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
 
     public SimpleUnicastApp(short selfId, String configPath) throws IOException {
         this.selfId = selfId;
+
         // Iniciar a thread receptora
         this.protocol = new UnicastProtocol(this, selfId, configPath);
 
@@ -96,10 +98,21 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
         try {
             short selfId = Short.parseShort(args[0]);
 
+            // Encontrar o ID na lista de config e garantir que é do usuario
+            List<UCSAP> ucsapList = Utils.loadConfiguration(CONFIG_PATH);
+            for (UCSAP ucsap : ucsapList) {
+                if (ucsap.id() == selfId 
+                && !(ucsap.host().equalsIgnoreCase("Localhost"))) {
+                    System.err.println("ERRO: ID inserido não é associado ao host local.");
+                    System.exit(1);
+                }
+            }
+
             // Usando try-with-resources nos garante que o close() vai ser chamado.
             try (SimpleUnicastApp app = new SimpleUnicastApp(selfId, CONFIG_PATH)){
                 app.run();
             }
+
         } catch (NumberFormatException e){
             System.err.println("ERRO: O ID fornecido '" + args[0] + "' não é um número válido.");
         } catch (IllegalArgumentException e) {
