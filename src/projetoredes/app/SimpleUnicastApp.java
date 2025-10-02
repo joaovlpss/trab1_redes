@@ -1,6 +1,7 @@
 package projetoredes.app;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Scanner;
 import projetoredes.unicast.UCSAP;
@@ -102,7 +103,11 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
             List<UCSAP> ucsapList = Utils.loadConfiguration(CONFIG_PATH);
             for (UCSAP ucsap : ucsapList) {
                 if (ucsap.id() == selfId 
-                && !(ucsap.host().equalsIgnoreCase("Localhost"))) {
+                && !(
+                        (ucsap.host().equalsIgnoreCase( InetAddress.getLocalHost().getHostAddress() ))
+                        || (ucsap.host().equalsIgnoreCase("localhost"))
+                    )
+                ) {
                     System.err.println("ERRO: ID inserido não é associado ao host local.");
                     System.exit(1);
                 }
