@@ -2,15 +2,27 @@
 
 ## Grupo
 
-Ana Julia Ticianeli - NROUSP & João Victor Lopes - 13672982
+Ana Julia Ticianeli & João Victor Lopes
+
+## Instalação e Utilização
+
+No arquivo submetido, encontram-se no diretório 'out' todas as classes já compiladas. 
+Para rodar o cliente de demonstração do UnicastService, basta rodar o programa 'SimpleUnicastApp' a partir da pasta raíz:
+
+```
+java -cp out projetoredes.app.SimpleUnicastApp <id_desejado>
+```
+
+Com um 'id_desejado' apropriadamente configurado em 'ucsaps.conf' (por padrão, todos os ids 0-3 já estão definidos para
+o localhost). Isso iniciará um cliente com o ID inserido, capaz de mandar mensagens para outros clientes que estão
+em execução.
 
 ## Atividades
 
 A atividade consiste na implementação do serviço de transporte 'UnicastProtocol'
 e do serviço de roteamento da camada de aplicação 'RoutingInformationProtocol', que utiliza os serviços do primeiro para troca de mensagens.
 
-Além disso, será feita a implementação de aplicações que utilizam dos dois protocolos para
-demonstração.
+Será feita a implementação de aplicações que utilizam dos dois protocolos para demonstração.
 
 ### UnicastProtocol
 
