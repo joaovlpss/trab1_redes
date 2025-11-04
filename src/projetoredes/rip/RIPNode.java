@@ -109,8 +109,7 @@ public class RIPNode implements UnicastServiceUserInterface {
     }
 
 
-    // Task para propagar periodicamente o vetor de distancias
-    
+    // Classe interna extendendo TimerTask para propagar periodicamente o vetor de distancias
     private class PropagationTask extends TimerTask {
         @Override
         public void run() {
@@ -123,6 +122,7 @@ public class RIPNode implements UnicastServiceUserInterface {
         }
     }
 
+    // Que envia o vetor de distancias atual para todos os vizinhos
     private void propagateVectorToNeighbors() {
             String pdu = "RIPIND " + this.nodeId + " " + formatVector(this.distanceVector);
 
@@ -132,6 +132,26 @@ public class RIPNode implements UnicastServiceUserInterface {
                     unicastLayer.UPDataReq(neighborId, pdu);
                 }
             }
+    }
+
+    // Metodos de envio de PDU
+    private void sendRIPNtf(short destId, short nodeA, short nodeB, int cost) {
+        String pdu = String.format("RIPNTF %d %d %d", nodeA, nodeB, cost);
+        unicastLayer.UPDataReq(destId, pdu);
+    }
+
+    private void sendRIPRsp(short destId) {
+        StringBuilder pduBuilder = new StringBuilder();
+        pduBuilder.append("RIPRSP ").append(this.nodeId).append(" ");
+        
+        for (int i = 0; i < this.distanceTable.length; i++) {
+            pduBuilder.append(formatVector(this.distanceTable[i]));
+            if (i < this.distanceTable.length - 1) {
+                pduBuilder.append(" ");
+            }
+        }
+        
+        unicastLayer.UPDataReq(destId, pduBuilder.toString());
     }
 
     // Utilitarios para formatar os vetores de distancia como strings e vice-versa
