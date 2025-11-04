@@ -40,7 +40,7 @@ public class Utils {
         return returnList;
     }
     
-    public static Map<Short, Map<Short, Integer>> loadTopology(String ripConfigPath, Set<Short> allNodes){
+    public static Map<Short, Map<Short, Integer>> loadTopology(String ripConfigPath){
         HashMap<Short, Map<Short, Integer>> topology = new HashMap<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(ripConfigPath))) {
