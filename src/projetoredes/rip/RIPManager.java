@@ -107,4 +107,73 @@ public class RIPManager implements RoutingProtocolManagementInterface, UnicastSe
         return ok1 && ok2;
     }
 
+    @Override
+    public void UPDataInd(short sourceId, String data) {
+        String[] parts = data.split(" ", 2);
+        if (parts.length == 0) return;
+
+        String pduType = parts[0];
+        String payload = (parts.length > 1) ? parts[1] : "";
+
+        try {
+            switch (pduType) {
+                case "RIPNTF":
+                    handleRIPNtf(payload);
+                    break;
+                case "RIPRSP":
+                    handleRIPRsp(payload);
+                    break;
+                default:
+                    System.err.println("Gerente: PDU inesperada '" + pduType + "' de " + sourceId + ". Ignorando.");
+            }
+        } catch (Exception e) {
+            System.err.println("Gerente: Erro ao processar PDU " + pduType + " de " + sourceId + ": " + e.getMessage());
+        }
+    }
+
+    // Trata RIPNTF e notifica a aplicaçao
+    private void handleRIPNtf(String payload) {
+        String[] parts = payload.split(" ");
+        short nodeA = Short.parseShort(parts[0]);
+        short nodeB = Short.parseShort(parts[1]);
+        int cost = Integer.parseInt(parts[2]);
+
+        applicationUser.linkCostIndication(nodeA, nodeB, cost);
+    }
+
+    // Trata RIPRSP e notifica a aplicaçao
+    private void handleRIPRsp(String payload) {
+        String[] parts = payload.split(" ", 2);
+        short nodeId = Short.parseShort(parts[0]);
+        String tableString = parts[1];
+
+        String[] vectorStrings = tableString.split(" ");
+        int numRows = vectorStrings.length;
+
+        if (numRows == 0) {
+            System.err.println("Gerente: RIPRSP de " + nodeId + " veio com tabela vazia.");
+            return;
+        }
+
+        // Aloca a tabela
+        int[][] distanceTable = new int[numRows][this.numNodes];
+        
+        // Faz o parse de cada vetor (linha)
+        for (int i = 0; i < numRows; i++) {
+            int[] vector = Arrays.stream(vectorStrings[i].split(":"))
+                                 .mapToInt(Integer::parseInt)
+                                 .toArray();
+            
+            if (vector.length == this.numNodes) {
+                distanceTable[i] = vector;
+            } else {
+                 System.err.println("Gerente: RIPRSP de " + nodeId + " com vetor de tamanho incorreto. Linha " + i);
+                 // Preenche com infinito para indicar erro
+                 Arrays.fill(distanceTable[i], RIPConfig.INFINITY);
+            }
+        }
+
+        // Notifica a camada de aplicação
+        applicationUser.distanceTableIndication(nodeId, distanceTable);
+    }
 }
