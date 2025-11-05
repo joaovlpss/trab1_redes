@@ -104,10 +104,202 @@ public class RIPNode implements UnicastServiceUserInterface {
         propagateVectorToNeighbors(); // Propaga o vetor inicial
     }
 
+    @Override
     public void UPDataInd(short sourceId, String data) {
-        // Implementar o recebimento de mensagens RIP aqui
+        String[] parts = data.split(" ", 2);
+        if (parts.length == 0) return;
+
+        String pduType = parts[0];
+        String payload = (parts.length > 1) ? parts[1] : "";
+
+        // System.out.println("Nó " + nodeId + " recebeu PDU: " + pduType + " de " + sourceId);
+
+        try {
+            switch (pduType) {
+                case "RIPGET":
+                    handleRIPGet(sourceId, payload);
+                    break;
+                case "RIPSET":
+                    handleRIPSet(sourceId, payload);
+                    break;
+                case "RIPIND":
+                    handleRIPInd(sourceId, payload);
+                    break;
+                case "RIPRQT":
+                    handleRIPRqt(sourceId);
+                    break;
+                default:
+                    System.err.println("Nó " + nodeId + ": PDU desconhecida '" + pduType + "' de " + sourceId);
+            }
+        } catch (Exception e) {
+            System.err.println("Nó " + nodeId + ": Erro ao processar PDU " + pduType + ": " + e.getMessage());
+        }
     }
 
+    // Handlers para PDUs
+
+    // RIPGET <NodeA> <NodeB>
+    // Resposta: RIPNTF <NodeA> <NodeB> <Cost>
+    private void handleRIPGet(short sourceId, String payload) {
+        if (sourceId != RIPConfig.MANAGER_ID) {
+            System.err.println("Nó " + nodeId + ": RIPGET recebido de não-gerente (ID: " + sourceId + "). Ignorando.");
+            return;
+        }
+
+        String[] parts = payload.split(" ");
+        short nodeA = Short.parseShort(parts[0]);
+        short nodeB = Short.parseShort(parts[1]);
+
+        if (nodeA != this.nodeId) {
+            System.err.println("Nó " + nodeId + ": RIPGET para nó " + nodeA + " recebido. Ignorando.");
+            return;
+        }
+
+        // Pega o custo atual do enlace
+        int cost = this.neighbors.getOrDefault(nodeB, RIPConfig.INFINITY);
+        sendRIPNtf(RIPConfig.MANAGER_ID, this.nodeId, nodeB, cost);
+    }
+
+
+    // RIPSET <NodeA> <NodeB> <NewCost>
+    // Resposta: RIPNTF <NodeA> <NodeB> <NewCost>
+    private void handleRIPSet(short sourceId, String payload) {
+        if (sourceId != RIPConfig.MANAGER_ID) {
+            System.err.println("Nó " + nodeId + ": RIPSET recebido de não-gerente (ID: " + sourceId + "). Ignorando.");
+            return;
+        }
+
+        String[] parts = payload.split(" ");
+        short nodeA = Short.parseShort(parts[0]);
+        short nodeB = Short.parseShort(parts[1]);
+        int newCost = Integer.parseInt(parts[2]);
+
+        if (nodeA != this.nodeId) {
+            System.err.println("Nó " + nodeId + ": RIPSET para nó " + nodeA + " recebido. Ignorando.");
+            return;
+        }
+
+        // O enlace deve existir na topologia original.
+        if (!this.fullTopology.get(this.nodeId).containsKey(nodeB)) {
+            System.err.println("Nó " + nodeId + ": RIPSET para enlace inexistente (" + nodeA + "-" + nodeB + "). Ignorando.");
+            return;
+        }
+
+        // Atualiza o custo do vizinho
+        this.neighbors.put(nodeB, newCost);
+        System.out.println("Nó " + nodeId + ": Custo do enlace para " + nodeB + " alterado para " + newCost);
+
+        // Se o custo for infinito, invalida a linha do vizinho na tabela
+        if (newCost == RIPConfig.INFINITY) {
+            int neighborRow = this.neighborToRowIndex.get(nodeB);
+            Arrays.fill(this.distanceTable[neighborRow], RIPConfig.INFINITY);
+            System.out.println("Nó " + nodeId + ": Enlace para " + nodeB + " é infinito. Invalidando seu vetor.");
+        }
+
+        // Recalcula o vetor e propaga se houver mudança
+        recalculateDistanceVector();
+
+        // Confirma a alteraçao para o gerente
+        sendRIPNtf(RIPConfig.MANAGER_ID, this.nodeId, nodeB, newCost);
+    }
+
+    // RIPIND <SourceNodeID> <Vector>
+    // Atualiza a tabela e recalcula o vetor se necessário
+    private void handleRIPInd(short sourceId, String payload) {
+        if (!this.neighbors.containsKey(sourceId)) {
+            System.err.println("Nó " + nodeId + ": RIPIND recebido de não-vizinho (ID: " + sourceId + "). Ignorando.");
+            return;
+        }
+
+        String[] parts = payload.split(" ", 2);
+        short sendingNodeId = Short.parseShort(parts[0]);
+        String vectorString = parts[1];
+
+        if (sendingNodeId != sourceId) {
+            System.err.println("Nó " + nodeId + ": ID de origem (" + sourceId + ") não bate com ID na PDU (" + sendingNodeId + "). Ignorando.");
+            return;
+        }
+
+        // Se o enlace para este vizinho é infinito, ignoramos sua IND
+        if (this.neighbors.get(sourceId) == RIPConfig.INFINITY) {
+            System.out.println("Nó " + nodeId + ": RIPIND de " + sourceId + " ignorado (custo do enlace é infinito).");
+            return;
+        }
+
+        int[] receivedVector = parseVector(vectorString);
+        if (receivedVector.length != this.numNodes) {
+            System.err.println("Nó " + nodeId + ": Vetor de " + sourceId + " com tamanho incorreto. Ignorando.");
+            return;
+        }
+
+        // Atualiza a linha do vizinho na tabela
+        int neighborRow = this.neighborToRowIndex.get(sourceId);
+        System.arraycopy(receivedVector, 0, this.distanceTable[neighborRow], 0, this.numNodes);
+
+        // Recalcula o vetor e propaga se houver mudança
+        recalculateDistanceVector();
+    }
+
+
+    private void handleRIPRqt(short sourceId) {
+        if (sourceId != RIPConfig.MANAGER_ID) {
+            System.err.println("Nó " + nodeId + ": RIPRQT recebido de não-gerente (ID: " + sourceId + "). Ignorando.");
+            return;
+        }
+        
+        sendRIPRsp(RIPConfig.MANAGER_ID);
+    }
+
+    // Logica do algoritmo
+    private synchronized void recalculateDistanceVector() {
+        boolean changed = false;
+        int selfIndex = nodeIdToIndex.get(this.nodeId);
+
+        // Itera por todas as COLUNAS
+        for (int j = 0; j < this.numNodes; j++) {
+            
+            // Custo para si mesmo e sempre 0
+            if (j == selfIndex) {
+                if (this.distanceVector[j] != 0) {
+                    this.distanceVector[j] = 0;
+                    changed = true;
+                }
+                continue;
+            }
+
+            int minCost = RIPConfig.INFINITY;
+
+            // Itera por todos os VIZINHOS (linhas > 0)
+            for (short neighborId : this.neighbors.keySet()) {
+                int costToNeighbor = this.neighbors.get(neighborId);
+                if (costToNeighbor == RIPConfig.INFINITY) {
+                    continue; // Enlace para este vizinho esta rompido
+                }
+
+                int neighborRow = this.neighborToRowIndex.get(neighborId);
+                int costFromNeighborToDest = this.distanceTable[neighborRow][j];
+
+                if (costFromNeighborToDest != RIPConfig.INFINITY) {
+                    int totalCost = costToNeighbor + costFromNeighborToDest;
+                    
+                    if (minCost == RIPConfig.INFINITY || totalCost < minCost) {
+                        minCost = totalCost;
+                    }
+                }
+            }
+
+            // Atualiza o vetor do no se o custo mudou
+            if (this.distanceVector[j] != minCost) {
+                this.distanceVector[j] = minCost;
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            System.out.println("Nó " + nodeId + ": Vetor recalculado: " + formatVector(this.distanceVector));
+            propagateVectorToNeighbors();
+        }
+    }
 
     // Classe interna extendendo TimerTask para propagar periodicamente o vetor de distancias
     private class PropagationTask extends TimerTask {
@@ -122,7 +314,7 @@ public class RIPNode implements UnicastServiceUserInterface {
         }
     }
 
-    // Que envia o vetor de distancias atual para todos os vizinhos
+    // Metodo que envia o vetor de distancias atual para todos os vizinhos
     private void propagateVectorToNeighbors() {
             String pdu = "RIPIND " + this.nodeId + " " + formatVector(this.distanceVector);
 
