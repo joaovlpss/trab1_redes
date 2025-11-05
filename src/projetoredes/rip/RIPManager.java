@@ -50,5 +50,61 @@ public class RIPManager implements RoutingProtocolManagementInterface, UnicastSe
     }
 
 
+    @Override
+    public boolean getDistanceTable(short nodeId) {
+        if (!allNodeIds.contains(nodeId)) {
+            System.err.println("Gerente: getDistanceTable para nó inválido " + nodeId);
+            return false;
+        }
+
+        String pdu = "RIPRQT";
+        return unicastLayer.UPDataReq(nodeId, pdu);
+    }
+
+    @Override
+    public boolean getLinkCost(short id1, short id2) {
+        if (!allNodeIds.contains(id1) || !allNodeIds.contains(id2)) {
+            System.err.println("Gerente: getLinkCost para nós inválidos " + id1 + ", " + id2);
+            return false;
+        }
+
+        // Valida se o enlace existe na topologia original
+        if (!topology.get(id1).containsKey(id2)) {
+            System.err.println("Gerente: getLinkCost para enlace inexistente " + id1 + "-" + id2);
+            return false;
+        }
+
+        String pdu = String.format("RIPGET %d %d", id1, id2);
+        return unicastLayer.UPDataReq(id1, pdu);
+    }
+
+    @Override
+    public boolean setLinkCost(short id1, short id2, int cost) {
+        if (!allNodeIds.contains(id1) || !allNodeIds.contains(id2)) {
+            System.err.println("Gerente: setLinkCost para nós inválidos " + id1 + ", " + id2);
+            return false;
+        }
+
+        // Valida se o enlace existe na topologia original
+        if (!topology.get(id1).containsKey(id2)) {
+            System.err.println("Gerente: setLinkCost para enlace inexistente " + id1 + "-" + id2);
+            return false;
+        }
+
+        // Valida o custo
+        if (cost != RIPConfig.INFINITY && (cost < 1 || cost > RIPConfig.MAX_COST)) {
+            System.err.println("Gerente: setLinkCost com custo inválido " + cost);
+            return false;
+        }
+
+        // Enviamos para os dois nos envolvidos
+        String pdu1 = String.format("RIPSET %d %d %d", id1, id2, cost);
+        String pdu2 = String.format("RIPSET %d %d %d", id2, id1, cost);
+
+        boolean ok1 = unicastLayer.UPDataReq(id1, pdu1);
+        boolean ok2 = unicastLayer.UPDataReq(id2, pdu2);
+
+        return ok1 && ok2;
+    }
 
 }
