@@ -1,7 +1,6 @@
 package projetoredes.rip;
 
 import projetoredes.unicast.UnicastProtocol;
-import projetoredes.unicast.UnicastServiceInterface;
 import projetoredes.unicast.UnicastServiceUserInterface;
 import projetoredes.utils.Utils;
 
@@ -11,9 +10,9 @@ import java.util.Map;
 import java.util.Set;
 
 
-public class RIPManager implements RoutingProtocolManagementInterface, UnicastServiceUserInterface {
+public class RIPManager implements RoutingProtocolManagementInterface, UnicastServiceUserInterface, AutoCloseable {
 
-    private final UnicastServiceInterface unicastLayer;
+    private final UnicastProtocol unicastLayer;
     private final RoutingProtocolManagementServiceUserInterface applicationUser;
 
     // Topologia carregada para validar requisicoes
@@ -175,5 +174,13 @@ public class RIPManager implements RoutingProtocolManagementInterface, UnicastSe
 
         // Notifica a camada de aplicação
         applicationUser.distanceTableIndication(nodeId, distanceTable);
+    }
+
+    @Override
+    public void close() {
+        if (unicastLayer != null) {
+            unicastLayer.close();
+        }
+        System.out.println("Gerente RIP encerrado.");
     }
 }

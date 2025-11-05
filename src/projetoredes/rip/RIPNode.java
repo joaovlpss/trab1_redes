@@ -16,10 +16,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-public class RIPNode implements UnicastServiceUserInterface {
+public class RIPNode implements UnicastServiceUserInterface, AutoCloseable {
     private final short nodeId;
 
-    private final UnicastServiceInterface unicastLayer;
+    private final UnicastProtocol unicastLayer;
 
     // Estruturas de dados do roteamento
     private final Map<Short, Map<Short, Integer>> fullTopology;
@@ -359,4 +359,12 @@ public class RIPNode implements UnicastServiceUserInterface {
                      .toArray();
     }
 
+    @Override
+    public void close() {
+        propagationTimer.cancel();
+        if (unicastLayer != null) {
+            unicastLayer.close();
+        }
+        System.out.println("Nó RIP " + nodeId + " encerrado.");
+    }
 }
