@@ -18,7 +18,6 @@ import java.util.List;
 
 public class RIPNode implements UnicastServiceUserInterface, AutoCloseable {
     private final short nodeId;
-
     private final UnicastProtocol unicastLayer;
 
     // Estruturas de dados do roteamento

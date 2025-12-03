@@ -21,9 +21,8 @@ public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
 
     private final Thread receiverThread;
 
-
-    public UnicastProtocol(UnicastServiceUserInterface user, short userId, String configPath) 
-    throws IOException, IllegalArgumentException {
+    public UnicastProtocol(UnicastServiceUserInterface user, short userId, String configPath)
+            throws IOException, IllegalArgumentException {
         if (user == null) {
             throw new IllegalArgumentException("O usuario do serviço nao pode ser nulo.");
         }
@@ -34,7 +33,7 @@ public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
             knownEntities.put(ucsap.id(), ucsap);
             try {
                 InetAddress address = InetAddress.getByName(ucsap.host());
-                SocketAddress socketAddr = new InetSocketAddress(address, ucsap.port()); 
+                SocketAddress socketAddr = new InetSocketAddress(address, ucsap.port());
                 knownAddresses.put(socketAddr, ucsap.id());
             } catch (UnknownHostException e) {
                 System.err.println("Aviso: Host desconhecido " + ucsap.host() + ". Ignorando esta entrada.");
@@ -57,7 +56,7 @@ public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
     }
 
     @Override
-    public boolean UPDataReq(short destinationId, String data){
+    public boolean UPDataReq(short destinationId, String data) {
         UCSAP destination = knownEntities.get(destinationId);
 
         if (destination == null) {
@@ -86,8 +85,8 @@ public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
 
     private void startReceiverThread() {
         byte[] buffer = new byte[MAX_PDU_SIZE];
-        while (!socket.isClosed()){
-            try{
+        while (!socket.isClosed()) {
+            try {
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 // Bloqueia ate receber pacote
                 socket.receive(packet);
@@ -96,8 +95,9 @@ public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
                 SocketAddress senderAddress = packet.getSocketAddress();
                 Short sourceId = knownAddresses.get(senderAddress);
 
-                if(sourceId == null) {
-                    System.err.println("Aviso: Pacote recebido de endereço desconhecido " + senderAddress + ". Ignorando.");
+                if (sourceId == null) {
+                    System.err.println(
+                            "Aviso: Pacote recebido de endereço desconhecido " + senderAddress + ". Ignorando.");
                     continue;
                 }
 
@@ -122,7 +122,8 @@ public class UnicastProtocol implements UnicastServiceInterface, AutoCloseable {
                 String data = parts[2];
 
                 if (data.length() != declaredLength) {
-                    System.err.println("Aviso: Comprimento declarado (" + declaredLength + ") não corresponde ao comprimento real (" + data.length() + "). Ignorando PDU.");
+                    System.err.println("Aviso: Comprimento declarado (" + declaredLength
+                            + ") não corresponde ao comprimento real (" + data.length() + "). Ignorando PDU.");
                     return;
                 }
 

@@ -62,7 +62,7 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
 
                     boolean success = protocol.UPDataReq(destinationId, message);
                     if (success) {
-                        System.out.println("-> Mensagem enviada para o ID" + destinationId + ".");
+                        System.out.println("-> Mensagem enviada para o ID " + destinationId + ".");
                     } else {
                         System.out.println("-> Falha ao enviar mensagem. Verifique o ID inserido.");
                     }
@@ -88,7 +88,6 @@ public class SimpleUnicastApp implements UnicastServiceUserInterface, AutoClosea
     public static void main(String[] args){
         if(args.length != 1) {
             System.err.println("Uso: java projetoredes.app.SimpleUnicastApp <id>");
-            // Sair com erro
             System.exit(1);
         }
 
