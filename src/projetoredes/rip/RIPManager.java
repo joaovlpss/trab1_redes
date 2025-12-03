@@ -172,7 +172,6 @@ public class RIPManager implements RoutingProtocolManagementInterface, UnicastSe
             }
         }
 
-        // Notifica a camada de aplicação
         applicationUser.distanceTableIndication(nodeId, distanceTable);
     }
 

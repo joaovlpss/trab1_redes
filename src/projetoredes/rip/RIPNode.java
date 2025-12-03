@@ -1,7 +1,6 @@
 package projetoredes.rip;
 
 import projetoredes.unicast.UnicastServiceUserInterface;
-import projetoredes.unicast.UnicastServiceInterface;
 import projetoredes.unicast.UnicastProtocol;
 import projetoredes.utils.Utils;
 
